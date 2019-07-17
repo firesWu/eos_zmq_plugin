@@ -233,7 +233,9 @@ namespace eosio {
           }
 
           for( const auto& atrace : it->second->action_traces ) {
-            on_action_trace( atrace, block_state );
+            if( atrace.receiver == atrace.act.account ) {
+              on_action_trace( atrace, block_state );
+            }  
           }
         }
         else {
@@ -266,7 +268,7 @@ namespace eosio {
       auto& chain = chain_plug->chain();
 
       zmq_action_object zao;
-      zao.global_action_seq = at.receipt.global_sequence;
+      zao.global_action_seq = at.receipt->global_sequence;
       zao.block_num = block_state->block->block_num();
       zao.block_time = block_state->block->timestamp;
       zao.action_trace = chain.to_variant_with_abi(at, abi_serializer_max_time);
@@ -681,9 +683,9 @@ namespace eosio {
       }
       
 
-      for( const auto& iline : at.inline_traces ) {
-        find_accounts_and_tokens( iline, accounts, asset_moves );
-      }
+      // for( const auto& iline : at.inline_traces ) {
+      //   find_accounts_and_tokens( iline, accounts, asset_moves );
+      // }
     }
 
 
@@ -784,8 +786,8 @@ namespace eosio {
     auto& chain = my->chain_plug->chain();
 
     my->applied_transaction_connection.emplace
-      ( chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
-          my->on_applied_transaction(p);  }));
+      ( chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ){
+          my->on_applied_transaction( std::get<0>(t) );  }));
 
     my->accepted_block_connection.emplace
       ( chain.accepted_block.connect([&](const block_state_ptr& p) {
